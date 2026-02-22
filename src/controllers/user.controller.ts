@@ -9,6 +9,7 @@ import { Request } from "express";
 import { hash } from "crypto";
 import { isValidUUID } from "../utils/helper";
 import { TimeSlotStatus, AppointmentStatus } from "@prisma/client";
+import { sendEmailAsync, welcomeTemplate } from "../utils/emailService";
 
 const generateToken = async (userId: string) => {
   try {
@@ -168,6 +169,12 @@ const signup = async (req: Request, res: any) => {
 
       return user;
     });
+
+    sendEmailAsync(
+      result.email,
+      "Welcome to CareXpert",
+      welcomeTemplate(result.name)
+    );
 
     return res
       .status(200)
