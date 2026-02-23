@@ -10,6 +10,7 @@ import { ApiError } from "../utils/ApiError";
 import prisma from "../utils/prismClient";
 import { time } from "console";
 import doc from "pdfkit";
+import { sendEmailAsync, appointmentTemplate, prescriptionTemplate } from '../utils/emailService'
 
 const viewDoctorAppointment = async (
   req: Request,
@@ -846,6 +847,12 @@ const respondToAppointmentRequest = async (req: Request, res: Response): Promise
 
     let updatedAppointment;
     let notification;
+    
+    const formattedDate = appointment.date.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
 
     if (action === "accept") {
       // Accept the appointment
@@ -875,6 +882,18 @@ const respondToAppointmentRequest = async (req: Request, res: Response): Promise
         });
       }
 
+      sendEmailAsync(
+        appointment.patient.user.email,
+        "Appointment Confirmed",
+        appointmentTemplate(
+          appointment.patient.user.name,
+          doctor.user.name,
+          formattedDate,
+          appointment.time,
+          "CONFIRMED"
+        )
+      );
+      
     } else {
       // Reject the appointment
       updatedAppointment = await prisma.appointment.update({
@@ -911,6 +930,19 @@ const respondToAppointmentRequest = async (req: Request, res: Response): Promise
           data: { status: TimeSlotStatus.AVAILABLE },
         });
       }
+      
+      sendEmailAsync(
+        appointment.patient.user.email,
+        "Appointment Request Declined",
+        appointmentTemplate(
+          appointment.patient.user.name,
+          doctor.user.name,
+          formattedDate,
+          appointment.time,
+          "REJECTED"
+        )
+      );
+
     }
 
     res.status(200).json(new ApiResponse(200, {
@@ -1002,19 +1034,19 @@ const addPrescriptionToAppointment = async (req: Request, res: Response): Promis
       res.status(400).json(new ApiError(400, "Prescription text is required"));
       return;
     }
-
+    
     const doctor = await prisma.doctor.findUnique({ where: { userId: doctorUserId } });
     if (!doctor) {
       res.status(403).json(new ApiError(403, "Only doctors can add prescriptions"));
       return;
     }
-
+    
     const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
     if (!appointment || appointment.doctorId !== doctor.id) {
       res.status(404).json(new ApiError(404, "Appointment not found or unauthorized"));
       return;
     }
-
+    
     // Create prescription and link to appointment
     const prescription = await prisma.prescription.create({
       data: {
@@ -1023,23 +1055,38 @@ const addPrescriptionToAppointment = async (req: Request, res: Response): Promis
         prescriptionText: prescriptionText.trim(),
       },
     });
-
+    
+    
     const updatedAppointment = await prisma.appointment.update({
-      where: { id: appointment.id },
+      where: { id: appointmentId },
       data: {
         prescriptionId: prescription.id,
         notes: notes || undefined,
       },
-      select : {
-        id : true,
-        patient : {
-          select : {
-            userId : true
-          }
-        }
-      }
+      include: {
+        patient: {
+          select: {
+            userId: true,   // needed for notification
+            user: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        doctor: {
+          include: {
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
-    console.log(updatedAppointment)
+    
     // Optional: notify patient that prescription is available
     await prisma.notification.create({
       data: {
@@ -1050,7 +1097,23 @@ const addPrescriptionToAppointment = async (req: Request, res: Response): Promis
         appointmentId: appointment.id,
       },
     });
-
+    
+    const formattedDate = updatedAppointment.date.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    
+    sendEmailAsync(
+      updatedAppointment.patient.user.email,
+      "Prescription Available",
+      prescriptionTemplate(
+        updatedAppointment.patient.user.name,
+        updatedAppointment.doctor.user.name,
+        formattedDate
+      )
+    );
+    
     res.status(200).json(new ApiResponse(200, { appointment: updatedAppointment, prescriptionId: prescription.id }, "Prescription saved"));
   } catch (error) {
     res.status(500).json(new ApiError(500, "Failed to add prescription", [error]));

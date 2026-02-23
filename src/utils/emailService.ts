@@ -69,7 +69,7 @@ export const welcomeTemplate = (name: string) => {
       </p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="#"
+        <a href="${process.env.frontend_url}"
            style="background-color: #3498db; 
                   color: white; 
                   padding: 12px 20px; 
@@ -96,14 +96,98 @@ export const welcomeTemplate = (name: string) => {
 };
 
 export const appointmentTemplate = (
-    name: string,
-    status: string 
-) => `
-<h3>Hello ${name},</h3>
-<p>Your appointment has been <strong>${status}</strong>.</p>
-`;
+  patientName: string,
+  doctorName: string,
+  date: string,
+  time: string,
+  status: "CONFIRMED" | "REJECTED"
+) => {
+  const formattedName = formatName(patientName);
+  const statusColor = status === "CONFIRMED" ? "#2ecc71" : "#e74c3c";
 
-export const prescriptionTemplate = (name: string) => `
-  <h3>Hello ${name},</h3>
-  <p>Your prescription is now available in your dashboard.</p>
-`;
+  return `
+  <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px;">
+
+      <h2 style="text-align: center; color: ${statusColor};">
+        Appointment ${status}
+      </h2>
+
+      <p style="font-size: 16px; color: #555;">
+        Hello ${formattedName},
+      </p>
+
+      <p style="font-size: 15px; color: #555;">
+        Your appointment request has been <strong>${status}</strong>.
+      </p>
+
+      <div style="background: #f9fafb; padding: 15px; border-radius: 6px; margin: 20px 0;">
+        <p style="margin: 5px 0;"><strong>Doctor:</strong> Dr. ${formatName(doctorName)}</p>
+        <p style="margin: 5px 0;"><strong>Date:</strong> ${date}</p>
+        <p style="margin: 5px 0;"><strong>Time:</strong> ${time}</p>
+      </div>
+
+      ${
+        status === "CONFIRMED"
+          ? `<p style="font-size: 14px; color: #555;">
+              Please make sure to be available at the scheduled time.
+             </p>`
+          : `<p style="font-size: 14px; color: #555;">
+              You may book another appointment at your convenience.
+             </p>`
+      }
+
+      <hr style="border: none; border-top: 1px solid #eee;" />
+
+      <p style="font-size: 12px; color: #999; text-align: center;">
+        © ${new Date().getFullYear()} CareXpert. All rights reserved.
+      </p>
+
+    </div>
+  </div>
+  `;
+};
+
+export const prescriptionTemplate = (
+  patientName: string,
+  doctorName: string,
+  appointmentDate: string
+) => {
+  const formattedName = formatName(patientName);
+
+  return `
+  <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px;">
+
+      <h2 style="text-align: center; color: #3498db;">
+        Prescription Available
+      </h2>
+
+      <p style="font-size: 16px; color: #555;">
+        Hello ${formattedName},
+      </p>
+
+      <p style="font-size: 15px; color: #555;">
+        Dr. ${formatName(doctorName)} has added a prescription for your appointment on ${appointmentDate}.
+      </p>
+
+      <div style="background: #f9fafb; padding: 15px; border-radius: 6px; margin: 20px 0;">
+        <p style="margin: 5px 0;">
+          Please log in to your CareXpert account to view the full prescription details.
+        </p>
+      </div>
+
+      <p style="font-size: 14px; color: #555;">
+        Take medications only as directed by your doctor.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #eee;" />
+
+      <p style="font-size: 12px; color: #999; text-align: center;">
+        © ${new Date().getFullYear()} CareXpert. All rights reserved.
+      </p>
+
+    </div>
+  </div>
+  `;
+};
