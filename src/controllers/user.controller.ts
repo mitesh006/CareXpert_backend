@@ -105,8 +105,7 @@ const signup = async (req: Request, res: any) => {
           email,
           password: hashedPassword,
           role,
-          profilePicture:
-            "https://res.cloudinary.com/de930by1y/image/upload/v1747403920/careXpert_profile_pictures/kxwsom57lcjamzpfjdod.jpg",
+          profilePicture: null,
         },
       });
 
@@ -239,8 +238,7 @@ const adminSignup = async (req: Request, res: any) => {
           email,
           password: hashedPassword,
           role: "ADMIN",
-          profilePicture:
-            "https://res.cloudinary.com/de930by1y/image/upload/v1747403920/careXpert_profile_pictures/kxwsom57lcjamzpfjdod.jpg",
+          profilePicture: null,
         },
       });
 
@@ -349,7 +347,7 @@ const logout = async (req: any, res: any) => {
     return res
       .status(200)
       .clearCookie("accessToken", options)
-      .clearCookie("refresToken", options)
+      .clearCookie("refreshToken", options)
       .json(new ApiResponse(200, "Logout successfully"));
   } catch (err) {
     return res.status(500).json(new ApiError(500, "internal server error"));
