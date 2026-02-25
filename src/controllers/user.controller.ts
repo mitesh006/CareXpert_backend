@@ -283,7 +283,7 @@ const verifyEmail = async (req: Request, res: any) => {
   }
 };
 
-const resendVerificationEmail = async (req: Request, res: any) => {
+const resendVerificationEmail = async (req: Request, res: any, next: NextFunction) => {
   try {
     const { email } = req.body;
 
