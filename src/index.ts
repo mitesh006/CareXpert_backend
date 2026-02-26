@@ -7,8 +7,10 @@ import { Server, Socket } from "socket.io";
 import http from "http";
 import { handleRoomSocket } from "./chat/roomManager";
 import { handleDmSocket } from "./chat/dmManager";
-import { notFoundHandler, errorHandler } from "./middlewares/errorHandler.middleware";
-import { globalRateLimiter } from "./middlewares/rateLimiter.middleware";
+import {
+  notFoundHandler,
+  errorHandler,
+} from "./middlewares/errorHandler.middleware";
 
 dotenv.config();
 
@@ -18,12 +20,10 @@ app.use(
   cors({
     origin: "http://localhost:5173",
     credentials: true,
-  })
+  }),
 );
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
-
-app.use("/api", globalRateLimiter);
 
 // Use Routes
 app.use("/api", routes);
@@ -42,7 +42,6 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"],
     credentials: true,
   },
-  
 });
 
 export function setupChatSocket(io: Server) {
