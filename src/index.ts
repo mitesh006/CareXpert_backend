@@ -11,6 +11,7 @@ import {
   notFoundHandler,
   errorHandler,
 } from "./middlewares/errorHandler.middleware";
+import { globalRateLimiter } from "./middlewares/rateLimiter.middleware";
 
 dotenv.config();
 
@@ -24,6 +25,18 @@ app.use(
 );
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
+
+// Health check endpoint (before rate limiting)
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
+app.use("/api", globalRateLimiter);
 
 // Use Routes
 app.use("/api", routes);
