@@ -14,7 +14,7 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import cacheService from "../utils/cacheService";
 
-const searchDoctors = async (req: any, res: Response, next: NextFunction) => {
+const searchDoctors = async (req: any, res: Response, next: NextFunction): Promise<any> => {
   const { specialty, location } = req.query;
 
   const specialtyQuery =
@@ -24,7 +24,7 @@ const searchDoctors = async (req: any, res: Response, next: NextFunction) => {
 
   // Input validation
   if (!specialtyQuery && !locationQuery) {
-    res
+    return res
       .status(400)
       .json(
         new ApiError(
@@ -32,36 +32,30 @@ const searchDoctors = async (req: any, res: Response, next: NextFunction) => {
           "At least one search parameter (specialty or location) is required"
         )
       );
-    return;
   }
+
   try {
     const cacheKey = `doctors:${specialtyQuery || 'all'}:${locationQuery || 'all'}`;
     const cached = await cacheService.get(cacheKey);
-    
+
     if (cached) {
       return res.status(200).json(new ApiResponse(200, cached));
     }
 
     const doctors = await prisma.doctor.findMany({
       where: {
-        AND: [
-          specialtyQuery
-            ? {
-                specialty: {
-                  contains: specialtyQuery,
-                  mode: "insensitive",
-                },
-              }
-            : {},
-          locationQuery
-            ? {
-                clinicLocation: {
-                  contains: locationQuery,
-                  mode: "insensitive",
-                },
-              }
-            : {},
-        ],
+        ...(specialtyQuery && {
+          specialty: {
+            contains: specialtyQuery as string,
+            mode: "insensitive"
+          }
+        }),
+        ...(locationQuery && {
+          clinicLocation: {
+            contains: locationQuery as string,
+            mode: "insensitive"
+          }
+        })
       },
       select: {
         id: true,
@@ -82,18 +76,18 @@ const searchDoctors = async (req: any, res: Response, next: NextFunction) => {
     });
 
     await cacheService.set(cacheKey, doctors, 3600);
-    res.status(200).json(new ApiResponse(200, doctors));
+    return res.status(200).json(new ApiResponse(200, doctors));
   } catch (error) {
     return next(error);
   }
 };
 
-const availableTimeSlots = async (req: any, res: Response, next: NextFunction): Promise<void> => {
+const availableTimeSlots = async (req: any, res: Response, next: NextFunction): Promise<any> => {
   const { doctorId } = (req as any).params;
   const date = req.query.date as string | undefined;
 
   try {
-    
+
     if (!doctorId || !isValidUUID(doctorId)) {
       throw new AppError("Invalid Doctor ID", 400);
     }
@@ -163,7 +157,7 @@ const availableTimeSlots = async (req: any, res: Response, next: NextFunction): 
       location: slot.doctor.clinicLocation,
     }));
 
-    res.status(200).json(new ApiResponse(200, formattedSlots));
+    return res.status(200).json(new ApiResponse(200, formattedSlots));
   } catch (error) {
     return next(error);
   }
@@ -171,7 +165,7 @@ const availableTimeSlots = async (req: any, res: Response, next: NextFunction): 
 
 const bookAppointment = async (req: any, res: Response, next: NextFunction): Promise<void> => {
   const { timeSlotId } = req.body;
-  
+
   const userId = (req as any).user?.id;
   const patient = await prisma.patient.findUnique({
     where: { userId },
@@ -179,7 +173,7 @@ const bookAppointment = async (req: any, res: Response, next: NextFunction): Pro
   });
 
   try {
-    
+
     if (!patient) {
       throw new AppError("Only patients can book appointments!", 403);
     }
@@ -189,7 +183,7 @@ const bookAppointment = async (req: any, res: Response, next: NextFunction): Pro
     }
 
     const result = await prisma.$transaction(async (prisma) => {
-      
+
       const timeSlot = await prisma.timeSlot.findUnique({
         where: { id: timeSlotId },
         include: {
@@ -230,7 +224,7 @@ const bookAppointment = async (req: any, res: Response, next: NextFunction): Pro
           },
         },
       });
-      
+
       if (existingAppointment) {
         throw new AppError("You already have an appointment in this time slot", 409);
       }
